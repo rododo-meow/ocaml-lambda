@@ -1,0 +1,8 @@
+*.cmo
+*.cmi
+/.depend
+/f
+/lexer.ml
+/parser.ml
+/parser.mli
+/parser.output
