@@ -8,6 +8,20 @@ open Support.Pervasive
 exception NoRuleApplies
 exception ApplyOnNonLambda
 
+let rec get_free_var t = match t with
+    TmLambda(_,name,t1) -> List.filter (fun x -> (String.compare x name) != 0) (get_free_var t1)
+  | TmApply(_,t1,t2) -> List.sort_uniq Pervasives.compare (List.concat [ (get_free_var t1); (get_free_var t2) ])
+  | TmValue(_,name) -> [ name ]
+
+module StringMap = Map.Make(String)
+
+let get_context free_vars =
+  let rec get_context' free_vars n map = match free_vars with
+      [] -> map
+    | var::free_vars' -> get_context' free_vars' (n+1) (StringMap.add var n map)
+  in
+    get_context' free_vars 1 StringMap.empty
+
 let apply t1 t2 = match t1 with
     TmLambda(fi,name,t1) -> t1
   | _ -> raise ApplyOnNonLambda
@@ -22,7 +36,14 @@ let rec eval1 t = match t with
   | TmValue(_,_) ->
       raise NoRuleApplies
 
+let rec print_list l = match l with
+    [] -> ()
+  | x::xl -> print_string x; print_list xl
+
+let print_map m =
+  StringMap.iter (fun s n -> print_string s; print_string ":"; print_int n) m
+
 let rec eval t =
-  try let t' = eval1 t
-    in eval t'
-  with NoRuleApplies -> t
+  print_map (get_context (get_free_var t));
+  print_string "\n";
+  t

@@ -61,6 +61,3 @@ let rec printtm_Term outer t = match t with
 let printtm t =
   printtm_Term true t;
 
-
-
-
