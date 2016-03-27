@@ -20,7 +20,15 @@ let get_context free_vars =
       [] -> map
     | var::free_vars' -> get_context' free_vars' (n+1) (StringMap.add var n map)
   in
-    get_context' free_vars 1 StringMap.empty
+    get_context' free_vars 0 StringMap.empty
+
+let up context lower_bound offset =
+  StringMap.map (fun x -> if x >= lower_bound then x + offset else x) context
+
+let rec nameless context t = match t with
+    TmLambda(fi,name,t1) -> TmLambda(fi,"",nameless (StringMap.add name 0 (up context 0 1)) t1)
+  | TmApply(fi,t1,t2) -> TmApply(fi,nameless context t1,nameless context t2)
+  | TmValue(fi,name) -> TmValue(fi,string_of_int(StringMap.find name context))
 
 let apply t1 t2 = match t1 with
     TmLambda(fi,name,t1) -> t1
@@ -41,9 +49,10 @@ let rec print_list l = match l with
   | x::xl -> print_string x; print_list xl
 
 let print_map m =
-  StringMap.iter (fun s n -> print_string s; print_string ":"; print_int n) m
+  StringMap.iter (fun s n -> print_string s; print_string ":"; print_int n; print_string "\n") m
 
 let rec eval t =
-  print_map (get_context (get_free_var t));
-  print_string "\n";
-  t
+  let context = get_context (get_free_var t)
+  in
+    print_map context;
+    nameless (get_context (get_free_var t)) t
