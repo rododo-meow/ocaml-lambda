@@ -32,6 +32,22 @@ let rec nameless context t = match t with
   | TmApply(fi,t1,t2) -> TmApply(fi,nameless context t1,nameless context t2)
   | TmValue(fi,name) -> TmValue(fi,string_of_int(StringMap.find name context))
 
+let resolve i context =
+  match List.hd (List.filter (fun (key,value) -> value = i) (StringMap.bindings context)) with
+  (key,value) -> key
+
+let candidate_name = [ "a"; "b"; "c"; "d"; "e"; "f" ]
+
+let generate_name context =
+  let used_names = List.map (fun (key,value) -> key) (StringMap.bindings context)
+  in
+    List.hd (List.filter (fun name -> not (List.exists (fun name2 -> name = name2) used_names)) candidate_name)
+
+let rec nameful context t = match t with
+      TmLambda(fi,name,t1) -> let generated_name = generate_name context in TmLambda(fi,generated_name,nameful (StringMap.add generated_name 0 (StringMap.map (fun x -> x+1) context)) t1)
+  | TmApply(fi,t1,t2) -> TmApply(fi,nameful context t1,nameful context t2)
+  | TmValue(fi,name) -> TmValue(fi,resolve (int_of_string name) context)
+
 let rec substitution j s t = match t with
     TmLambda(fi,name,t1) -> TmLambda(fi,name,substitution (j+1) (shift 0 1 s) t1)
   | TmApply(fi,t1,t2) -> TmApply(fi,substitution j s t1, substitution j s t2)
@@ -62,4 +78,4 @@ let rec eval t =
   let context = get_context (get_free_var t)
   in
     print_map context;
-    eval1 (nameless (get_context (get_free_var t)) t)
+    nameful context (eval1 (nameless context t))
