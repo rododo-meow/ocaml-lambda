@@ -22,16 +22,23 @@ let get_context free_vars =
   in
     get_context' free_vars 0 StringMap.empty
 
-let up context lower_bound offset =
-  StringMap.map (fun x -> if x >= lower_bound then x + offset else x) context
+let rec shift lower_bound offset t = match t with
+    TmApply(fi,t1,t2) -> TmApply(fi,shift lower_bound offset t1,shift lower_bound offset t2)
+  | TmLambda(fi,name,t1) -> TmLambda(fi,name,shift (lower_bound+1) offset t1)
+  | TmValue(fi,name) -> let i = int_of_string name in TmValue(fi,if i >= lower_bound then string_of_int (i + offset) else name)
 
 let rec nameless context t = match t with
-    TmLambda(fi,name,t1) -> TmLambda(fi,"",nameless (StringMap.add name 0 (up context 0 1)) t1)
+    TmLambda(fi,name,t1) -> TmLambda(fi,"",nameless (StringMap.add name 0 (StringMap.map (fun x -> x + 1) context)) t1)
   | TmApply(fi,t1,t2) -> TmApply(fi,nameless context t1,nameless context t2)
   | TmValue(fi,name) -> TmValue(fi,string_of_int(StringMap.find name context))
 
+let rec substitution j s t = match t with
+    TmLambda(fi,name,t1) -> TmLambda(fi,name,substitution (j+1) (shift 0 1 s) t1)
+  | TmApply(fi,t1,t2) -> TmApply(fi,substitution j s t1, substitution j s t2)
+  | TmValue(fi,name) -> if name = string_of_int j then s else t
+
 let apply t1 t2 = match t1 with
-    TmLambda(fi,name,t1) -> t1
+    TmLambda(fi,name,t1) -> shift 0 (-1) (substitution 0 (shift 0 1 t2) t1)
   | _ -> raise ApplyOnNonLambda
 
 let rec eval1 t = match t with
@@ -55,4 +62,4 @@ let rec eval t =
   let context = get_context (get_free_var t)
   in
     print_map context;
-    nameless (get_context (get_free_var t)) t
+    eval1 (nameless (get_context (get_free_var t)) t)
