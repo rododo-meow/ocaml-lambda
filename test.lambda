@@ -1,3 +1,11 @@
 if true then 0 else succ 0;
 if false then 0 else succ 1;
 (\c:Nat->Nat.(\a:Nat.(\b:(Nat->Nat)->Nat.b (\a:Nat.b c)) (\b:Nat->Nat.b a)) (succ 3)) (\a:Nat.if iszero(pred (pred (pred a))) then 1 else 0);
+\a:Nat.a a;
+\a:Nat.if true then a else false;
+(\a:Nat.a) true;
+if 0 then 0 else 0;
+if true then 0 else succ true;
+if true then 0 else pred (\a:Nat.a);
+if true then 0 else iszero true;
+b;

@@ -6,6 +6,100 @@ open Support.Pervasive
 (* ------------------------   EVALUATION  ------------------------ *)
 
 exception NoRuleApplies
+exception IllFormed
+
+type ty = TyBool | TyNat | TyArrow of ty * ty
+
+module StringMap = Map.Make(String)
+module Int = struct
+  type t = int
+  let compare i j = Pervasives.compare i j
+end
+module IntMap = Map.Make(Int)
+
+let rec print_type ty = match ty with
+    TyBool -> pr "Bool"
+  | TyNat -> pr "Nat"
+  | TyArrow(ty1,ty2) -> 
+      (match ty1 with
+          TyArrow _ ->
+            pr "("; print_type ty1; pr ")"
+        | _ -> print_type ty1);
+      pr "->";
+      print_type ty2
+
+let rec type_term_to_type t = match t with
+    TmBool(_) -> TyBool
+  | TmNat(_) -> TyNat
+  | TmArrow(_,ty1,ty2) -> TyArrow(type_term_to_type ty1, type_term_to_type ty2)
+
+let rec get_type context t = match t with
+    TmIf(_,t1,t2,t3) ->
+      (match get_type context t1 with
+          TyBool ->
+            let ty1 = get_type context t2
+            and ty2 = get_type context t3
+            in 
+            if ty1 = ty2 then ty1 else
+              (printInfo (tmInfo (Exp t));
+               pr "Type of two branches of if doesn't match\n";
+               pr "True:  "; print_type ty1; pr "\n";
+               pr "False: "; print_type ty2; pr "\n";
+               raise IllFormed)
+        | ty ->
+          (printInfo (tmInfo (Exp t));
+           pr "The condition exp's type is "; print_type ty; pr "\n";
+           raise IllFormed))
+  | TmZero(_) -> TyNat
+  | TmSucc(_,t) -> 
+    (match get_type context t with
+       TyNat -> TyNat
+     | ty ->
+       (printInfo (tmInfo (Exp t));
+        pr "Apply succ on "; print_type ty; pr "\n";
+        raise IllFormed))
+  | TmPred(_,t) ->
+    (match get_type context t with
+       TyNat -> TyNat
+     | ty ->
+       (printInfo (tmInfo (Exp t));
+        pr "Apply pred on "; print_type ty; pr "\n";
+        raise IllFormed))
+  | TmIsZero(_,t') ->
+    (match get_type context t' with
+       TyNat -> TyBool
+     | ty ->
+       (printInfo (tmInfo (Exp t));
+        pr "Apply iszero on "; print_type ty; pr "\n";
+        raise IllFormed))
+  | TmTrue(_) -> TyBool
+  | TmFalse(_) -> TyBool
+  | TmValue(_,name) -> 
+    (try 
+       IntMap.find (int_of_string name) context
+     with
+       Not_found ->
+       (printInfo (tmInfo (Exp t));
+        pr "Free variable"; pr "\n";
+        raise IllFormed))
+  | TmApply(_,t1,t2) ->
+    (let ty1 = get_type context t1
+     and ty2 = get_type context t2
+     in
+       match ty1 with
+           TyArrow(tys,tyd) -> if tys = ty2 then tyd else
+             (printInfo (tmInfo (Exp t));
+              pr "Abstraction's type doesn't match with actual argument (need "; print_type tys; pr ", got "; print_type ty2; pr ")"; pr "\n";
+              raise IllFormed)
+         | _ ->
+           (printInfo (tmInfo (Exp t));
+            pr "Do apply on "; print_type ty1; pr "\n";
+            raise IllFormed))
+  | TmLambda(_,name,ty,t2) ->
+    (let ty1 = type_term_to_type ty
+     in let ty2 = get_type (IntMap.add 0 ty1 (IntMap.fold (fun key ty m -> IntMap.add (key+1) ty m) context IntMap.empty)) t2
+     in TyArrow(ty1, ty2))
+  | IllExp -> raise IllFormed
 
 let rec get_free_var t = match t with
     TmLambda(_,name,_,t1) -> List.filter (fun x -> (String.compare x name) != 0) (get_free_var t1)
@@ -18,8 +112,7 @@ let rec get_free_var t = match t with
   | TmZero(_) -> []
   | TmTrue(_) -> []
   | TmFalse(_) -> []
-
-module StringMap = Map.Make(String)
+  | IllExp -> []
 
 let get_context free_vars =
   let rec get_context' free_vars n map = match free_vars with
@@ -42,6 +135,7 @@ let rec shift lower_bound offset t =
   | TmZero(_) -> t
   | TmTrue(_) -> t
   | TmFalse(_) -> t
+  | IllExp -> t
 
 let rec nameless context t = match t with
     TmLambda(fi,name,ty,t1) -> TmLambda(fi,"",ty,nameless (StringMap.add name 0 (StringMap.map (fun x -> x + 1) context)) t1)
@@ -54,6 +148,7 @@ let rec nameless context t = match t with
   | TmZero(_) -> t
   | TmTrue(_) -> t
   | TmFalse(_) -> t
+  | IllExp -> t
 
 let resolve i context =
   match List.hd (List.filter (fun (key,value) -> value = i) (StringMap.bindings context)) with
@@ -79,6 +174,7 @@ let rec nameful context t = match t with
   | TmZero(_) -> t
   | TmTrue(_) -> t
   | TmFalse(_) -> t
+  | IllExp -> t
 
 let rec substitution j s t = match t with
     TmLambda(fi,name,ty,t1) -> TmLambda(fi,name,ty,substitution (j+1) (shift 0 1 s) t1)
@@ -91,6 +187,7 @@ let rec substitution j s t = match t with
   | TmZero(_) -> t
   | TmTrue(_) -> t
   | TmFalse(_) -> t
+  | IllExp -> t
 
 let apply t1 t2 = match t1 with
     TmLambda(fi,name,_,t1) -> shift 0 (-1) (substitution 0 (shift 0 1 t2) t1)
@@ -146,6 +243,8 @@ let rec eval1 t = match t with
       raise NoRuleApplies
   | TmFalse(_) ->
       raise NoRuleApplies
+  | IllExp ->
+      raise NoRuleApplies
 
 let rec print_list l = match l with
     [] -> ()
@@ -156,10 +255,19 @@ let print_map m =
 
 let rec nameless_eval t =
   try let t' = eval1 t
-    in nameless_eval t'
+    in
+      printtm t';
+      pr "\n";
+      nameless_eval t'
   with NoRuleApplies -> t
 
 let eval t =
   let context = get_context (get_free_var t)
+  in let nameless_rep = nameless context t
+  and drop v = ()
   in
-    nameful context (nameless_eval (nameless context t))
+    try
+      drop (get_type IntMap.empty nameless_rep);
+      nameful context (nameless_eval nameless_rep)
+    with
+      IllFormed -> IllExp

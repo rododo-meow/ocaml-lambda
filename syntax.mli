@@ -20,6 +20,7 @@ type exp_term =
   | TmApply of info * exp_term * exp_term
   | TmLambda of info * string * type_term * exp_term
   | TmValue of info * string
+  | IllExp
 
 type term = Exp of exp_term | Type of type_term
 

@@ -21,6 +21,7 @@ type exp_term =
   | TmApply of info * exp_term * exp_term
   | TmLambda of info * string * type_term * exp_term
   | TmValue of info * string
+  | IllExp
 
 type term =
     Exp of exp_term
@@ -46,6 +47,7 @@ let tmInfo t = match t with
   | Type(TmBool(fi)) -> fi
   | Type(TmNat(fi)) -> fi
   | Type(TmArrow(fi,_,_)) -> fi
+  | Exp(IllExp) -> dummyinfo
 
 (* ---------------------------------------------------------------------- *)
 (* Printing *)
@@ -99,16 +101,12 @@ and printtm_ExpTerm outer t = match t with
 
 and printtm_Exp outer t = match t with
     TmIf(fi, t1, t2, t3) ->
-       obox0();
        pr "if ";
        printtm_ExpTerm false t1;
-       print_space();
-       pr "then ";
+       pr " then ";
        printtm_ExpTerm false t2;
-       print_space();
-       pr "else ";
+       pr " else ";
        printtm_ExpTerm false t3;
-       cbox()
   | t -> printtm_AppTerm outer t
 
 and printtm_AppTerm outer t = match t with
@@ -130,6 +128,7 @@ and printtm_ATerm outer t = match t with
        | _ -> (pr "(succ "; printtm_ATerm false t1; pr ")")
      in f 1 t1
   | TmValue(_,v) -> pr v
+  | IllExp -> pr "Ill formed exp"
   | t -> pr "("; printtm_ExpTerm outer t; pr ")"
 
 let printtm t = printtm_ExpTerm true t
