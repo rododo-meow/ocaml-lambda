@@ -1,5 +1,3 @@
-(\b.b (\a.b a)) (\b.b a);
-(\b.w (\a.b a)) (\b.b a);
 if true then 0 else succ 0;
 if false then 0 else succ 1;
-(\c.(\a.(\b.b (\a.b c)) (\b.b a)) (succ 3)) (\a.if iszero(pred (pred (pred a))) then 1 else 0);
+(\c:Nat->Nat.(\a:Nat.(\b:(Nat->Nat)->Nat.b (\a:Nat.b c)) (\b:Nat->Nat.b a)) (succ 3)) (\a:Nat.if iszero(pred (pred (pred a))) then 1 else 0);

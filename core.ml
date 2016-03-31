@@ -8,7 +8,7 @@ open Support.Pervasive
 exception NoRuleApplies
 
 let rec get_free_var t = match t with
-    TmLambda(_,name,t1) -> List.filter (fun x -> (String.compare x name) != 0) (get_free_var t1)
+    TmLambda(_,name,_,t1) -> List.filter (fun x -> (String.compare x name) != 0) (get_free_var t1)
   | TmApply(_,t1,t2) -> List.sort_uniq Pervasives.compare (List.concat [ (get_free_var t1); (get_free_var t2) ])
   | TmValue(_,name) -> [ name ]
   | TmIf(_,t1,t2,t3) -> List.sort_uniq Pervasives.compare (List.concat [ (get_free_var t1); (get_free_var t2); (get_free_var t3) ])
@@ -33,7 +33,7 @@ let rec shift lower_bound offset t =
     shift lower_bound offset t
   in match t with
     TmApply(fi,t1,t2) -> TmApply(fi,do_shift t1,do_shift t2)
-  | TmLambda(fi,name,t1) -> TmLambda(fi,name,shift (lower_bound+1) offset t1)
+  | TmLambda(fi,name,ty,t1) -> TmLambda(fi,name,ty,shift (lower_bound+1) offset t1)
   | TmValue(fi,name) -> let i = int_of_string name in TmValue(fi,if i >= lower_bound then string_of_int (i + offset) else name)
   | TmIf(fi,t1,t2,t3) -> TmIf(fi,do_shift t1,do_shift t2,do_shift t3)
   | TmSucc(fi,t1) -> TmSucc(fi,do_shift t1)
@@ -44,7 +44,7 @@ let rec shift lower_bound offset t =
   | TmFalse(_) -> t
 
 let rec nameless context t = match t with
-    TmLambda(fi,name,t1) -> TmLambda(fi,"",nameless (StringMap.add name 0 (StringMap.map (fun x -> x + 1) context)) t1)
+    TmLambda(fi,name,ty,t1) -> TmLambda(fi,"",ty,nameless (StringMap.add name 0 (StringMap.map (fun x -> x + 1) context)) t1)
   | TmApply(fi,t1,t2) -> TmApply(fi,nameless context t1,nameless context t2)
   | TmValue(fi,name) -> TmValue(fi,string_of_int(StringMap.find name context))
   | TmIf(fi,t1,t2,t3) -> TmIf(fi,nameless context t1,nameless context t2,nameless context t3)
@@ -67,9 +67,9 @@ let generate_name context =
     List.hd (List.filter (fun name -> not (List.exists (fun name2 -> name = name2) used_names)) candidate_name)
 
 let rec nameful context t = match t with
-    TmLambda(fi,name,t1) ->
+    TmLambda(fi,name,ty,t1) ->
       let generated_name = generate_name context
-      in TmLambda(fi,generated_name,nameful (StringMap.add generated_name 0 (StringMap.map (fun x -> x+1) context)) t1)
+      in TmLambda(fi,generated_name,ty,nameful (StringMap.add generated_name 0 (StringMap.map (fun x -> x+1) context)) t1)
   | TmApply(fi,t1,t2) -> TmApply(fi,nameful context t1,nameful context t2)
   | TmValue(fi,name) -> TmValue(fi,resolve (int_of_string name) context)
   | TmIf(fi,t1,t2,t3) -> TmIf(fi,nameful context t1,nameful context t2,nameful context t3)
@@ -81,7 +81,7 @@ let rec nameful context t = match t with
   | TmFalse(_) -> t
 
 let rec substitution j s t = match t with
-    TmLambda(fi,name,t1) -> TmLambda(fi,name,substitution (j+1) (shift 0 1 s) t1)
+    TmLambda(fi,name,ty,t1) -> TmLambda(fi,name,ty,substitution (j+1) (shift 0 1 s) t1)
   | TmApply(fi,t1,t2) -> TmApply(fi,substitution j s t1, substitution j s t2)
   | TmValue(fi,name) -> if name = string_of_int j then s else t
   | TmIf(fi,t1,t2,t3) -> TmIf(fi,substitution j s t1, substitution j s t2, substitution j s t3)
@@ -93,7 +93,7 @@ let rec substitution j s t = match t with
   | TmFalse(_) -> t
 
 let apply t1 t2 = match t1 with
-    TmLambda(fi,name,t1) -> shift 0 (-1) (substitution 0 (shift 0 1 t2) t1)
+    TmLambda(fi,name,_,t1) -> shift 0 (-1) (substitution 0 (shift 0 1 t2) t1)
   | _ -> raise NoRuleApplies
 
 let rec isnumericval t = match t with
@@ -112,7 +112,7 @@ let rec eval1 t = match t with
       (try
         TmApply(fi,(eval1 t1),t2)
       with NoRuleApplies -> apply t1 t2)
-  | TmLambda(_,_,_) -> 
+  | TmLambda(_,_,_,_) -> 
       raise NoRuleApplies
   | TmValue(_,_) ->
       raise NoRuleApplies

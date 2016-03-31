@@ -5,35 +5,47 @@ open Support.Pervasive
 (* ---------------------------------------------------------------------- *)
 (* Datatypes *)
 
-type term =
+type type_term =
+    TmBool of info
+  | TmNat of info
+  | TmArrow of info * type_term * type_term
+
+type exp_term =
     TmTrue of info
   | TmFalse of info
-  | TmIf of info * term * term * term
+  | TmIf of info * exp_term * exp_term * exp_term
   | TmZero of info
-  | TmSucc of info * term
-  | TmPred of info * term
-  | TmIsZero of info * term
-  | TmApply of info * term * term
-  | TmLambda of info * string * term
+  | TmSucc of info * exp_term
+  | TmPred of info * exp_term
+  | TmIsZero of info * exp_term
+  | TmApply of info * exp_term * exp_term
+  | TmLambda of info * string * type_term * exp_term
   | TmValue of info * string
 
+type term =
+    Exp of exp_term
+  | Type of type_term
+
 type command =
-  | Eval of info * term
+  | Eval of info * exp_term
 
 (* ---------------------------------------------------------------------- *)
 (* Extracting file info *)
 
 let tmInfo t = match t with
-    TmTrue(fi) -> fi
-  | TmFalse(fi) -> fi
-  | TmIf(fi,_,_,_) -> fi
-  | TmZero(fi) -> fi
-  | TmSucc(fi,_) -> fi
-  | TmPred(fi,_) -> fi
-  | TmIsZero(fi,_) -> fi 
-  | TmApply(fi,_,_) -> fi
-  | TmLambda(fi,_,_) -> fi
-  | TmValue(fi,_) -> fi
+    Exp(TmTrue(fi)) -> fi
+  | Exp(TmFalse(fi)) -> fi
+  | Exp(TmIf(fi,_,_,_)) -> fi
+  | Exp(TmZero(fi)) -> fi
+  | Exp(TmSucc(fi,_)) -> fi
+  | Exp(TmPred(fi,_)) -> fi
+  | Exp(TmIsZero(fi,_)) -> fi 
+  | Exp(TmApply(fi,_,_)) -> fi
+  | Exp(TmLambda(fi,_,_,_)) -> fi
+  | Exp(TmValue(fi,_)) -> fi
+  | Type(TmBool(fi)) -> fi
+  | Type(TmNat(fi)) -> fi
+  | Type(TmArrow(fi,_,_)) -> fi
 
 (* ---------------------------------------------------------------------- *)
 (* Printing *)
@@ -56,31 +68,46 @@ let obox() = open_hvbox 2
 let cbox() = close_box()
 let break() = print_break 0 0
 
-let rec printtm_Term outer t = match t with
+let rec printtm_TypeTerm outer t = match t with
+    TmBool(_) -> 
+      pr "Bool"
+  | TmNat(_) ->
+      pr "Nat"
+  | TmArrow(_,ty1,ty2) ->
+      (match ty1 with
+          TmArrow _ ->
+            pr "("; printtm_TypeTerm false ty1; pr ")"
+        | _ -> printtm_TypeTerm false ty1);
+      pr "->";
+      printtm_TypeTerm false ty2
+
+and printtm_ExpTerm outer t = match t with
     TmApply(fi, t1, t2) ->
       (match t1 with
-          TmLambda(_,_,_) -> pr "("; printtm_Term false t1; pr ")"
-        | _ -> printtm_Term false t1);
+          TmLambda(_,_,_,_) -> pr "("; printtm_ExpTerm false t1; pr ")"
+        | _ -> printtm_ExpTerm false t1);
       pr " ";
-      printtm_Term false t2
-  | TmLambda(fi, x, t1) ->
+      printtm_ExpTerm false t2
+  | TmLambda(fi, x, ty, t1) ->
       pr "\\";
       pr x;
+      pr ":";
+      printtm_TypeTerm false ty;
       pr ".";
-      printtm_Term false t1
+      printtm_ExpTerm false t1
   | t -> printtm_Exp outer t
 
 and printtm_Exp outer t = match t with
     TmIf(fi, t1, t2, t3) ->
        obox0();
        pr "if ";
-       printtm_Term false t1;
+       printtm_ExpTerm false t1;
        print_space();
        pr "then ";
-       printtm_Term false t2;
+       printtm_ExpTerm false t2;
        print_space();
        pr "else ";
-       printtm_Term false t3;
+       printtm_ExpTerm false t3;
        cbox()
   | t -> printtm_AppTerm outer t
 
@@ -103,7 +130,7 @@ and printtm_ATerm outer t = match t with
        | _ -> (pr "(succ "; printtm_ATerm false t1; pr ")")
      in f 1 t1
   | TmValue(_,v) -> pr v
-  | t -> pr "("; printtm_Term outer t; pr ")"
+  | t -> pr "("; printtm_ExpTerm outer t; pr ")"
 
-let printtm t = printtm_Term true t;
+let printtm t = printtm_ExpTerm true t
 

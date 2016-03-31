@@ -30,12 +30,12 @@ open Syntax
 %token <Support.Error.info> SUCC
 %token <Support.Error.info> PRED
 %token <Support.Error.info> ISZERO
+%token <Support.Error.info> BOOL
+%token <Support.Error.info> NAT
 
 /* Identifier and constant value tokens */
 %token <string Support.Error.withinfo> ID
 %token <int Support.Error.withinfo> INTV
-%token <float Support.Error.withinfo> FLOATV
-%token <string Support.Error.withinfo> STRINGV
 
 /* Symbolic tokens */
 %token <Support.Error.info> DOT
@@ -44,6 +44,8 @@ open Syntax
 %token <Support.Error.info> SEMI
 %token <Support.Error.info> LPAREN
 %token <Support.Error.info> RPAREN
+%token <Support.Error.info> COLON
+%token <Support.Error.info> ARROW
 
 /* ---------------------------------------------------------------------- */
 /* The starting production of the generated parser is the syntactic class
@@ -71,13 +73,13 @@ toplevel :
 /* A top-level command */
 Command :
   | Term 
-      { (let t = $1 in Eval(tmInfo t,t)) }
+      { (let t = $1 in Eval(tmInfo (Exp t),t)) }
 
 Term :
     Term Exp
-      { TmApply(tmInfo $2, $1, $2) }
-  | LAMBDA ID DOT Term
-      { TmLambda($1, $2.v, $4) }
+      { TmApply(tmInfo (Exp $2), $1, $2) }
+  | LAMBDA ID COLON Type DOT Term
+      { TmLambda($1, $2.v, $4, $6) }
   | Exp
       { $1 }
 
@@ -112,5 +114,19 @@ ATerm :
           in f $1.v }
   | ID
       { TmValue($1.i, $1.v) }
+
+Type :
+    AType ARROW Type
+      { TmArrow($2, $1, $3) }
+  | AType
+      { $1 }
+
+AType :
+    BOOL
+      { TmBool($1) }
+  | NAT
+      { TmNat($1) }
+  | LPAREN Type RPAREN
+      { $2 }
 
 /*   */

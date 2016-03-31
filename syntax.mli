@@ -4,23 +4,30 @@ open Support.Pervasive
 open Support.Error
 
 (* Data type definitions *)
-type term =
+type type_term =
+    TmBool of info
+  | TmNat of info
+  | TmArrow of info * type_term * type_term
+
+type exp_term =
     TmTrue of info
   | TmFalse of info
-  | TmIf of info * term * term * term
+  | TmIf of info * exp_term * exp_term * exp_term
   | TmZero of info
-  | TmSucc of info * term
-  | TmPred of info * term
-  | TmIsZero of info * term
-  | TmApply of info * term * term
-  | TmLambda of info * string * term
+  | TmSucc of info * exp_term
+  | TmPred of info * exp_term
+  | TmIsZero of info * exp_term
+  | TmApply of info * exp_term * exp_term
+  | TmLambda of info * string * type_term * exp_term
   | TmValue of info * string
 
+type term = Exp of exp_term | Type of type_term
+
 type command =
-  | Eval of info * term
+  | Eval of info * exp_term
 
 (* Printing *)
-val printtm: term -> unit
+val printtm: exp_term -> unit
 
 (* Misc *)
 val tmInfo: term -> info

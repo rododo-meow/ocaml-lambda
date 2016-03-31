@@ -19,6 +19,8 @@ let reservedWords = [
   ("succ", fun i -> Parser.SUCC i);
   ("pred", fun i -> Parser.PRED i);
   ("iszero", fun i -> Parser.ISZERO i);
+  ("Nat", fun i -> Parser.NAT i);
+  ("Bool", fun i -> Parser.BOOL i);
 
   (* Symbols *)
   ("\\", fun i -> Parser.LAMBDA i);
@@ -26,6 +28,8 @@ let reservedWords = [
   ("(", fun i -> Parser.LPAREN i);
   (")", fun i -> Parser.RPAREN i);
   (";", fun i -> Parser.SEMI i);
+  (":", fun i -> Parser.COLON i);
+  ("->", fun i -> Parser.ARROW i);
 ]
 
 (* Support functions *)
@@ -113,7 +117,10 @@ rule main = parse
   ['A'-'Z' 'a'-'z' '_' '0'-'9' '\'']*
     { createID (info lexbuf) (text lexbuf) }
 
-| ['\\' '.' '(' ')' ';']
+| "->"
+    { createID (info lexbuf) (text lexbuf) }
+
+| ['\\' '.' '(' ')' ';' ':']
     { createID (info lexbuf) (text lexbuf) }
 
 | eof { Parser.EOF(info lexbuf) }
