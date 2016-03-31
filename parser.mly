@@ -22,6 +22,14 @@ open Syntax
  */
 
 /* Keyword tokens */
+%token <Support.Error.info> IF
+%token <Support.Error.info> THEN
+%token <Support.Error.info> ELSE
+%token <Support.Error.info> TRUE
+%token <Support.Error.info> FALSE
+%token <Support.Error.info> SUCC
+%token <Support.Error.info> PRED
+%token <Support.Error.info> ISZERO
 
 /* Identifier and constant value tokens */
 %token <string Support.Error.withinfo> ID
@@ -66,12 +74,42 @@ Command :
       { (let t = $1 in Eval(tmInfo t,t)) }
 
 Term :
-    LPAREN Term RPAREN  
-      { $2 } 
-  | Term Term
+    Term Exp
       { TmApply(tmInfo $2, $1, $2) }
   | LAMBDA ID DOT Term
       { TmLambda($1, $2.v, $4) }
+  | Exp
+      { $1 }
+
+Exp :
+    AppTerm
+      { $1 }
+  | IF Term THEN Term ELSE Term
+      { TmIf($1, $2, $4, $6) }
+
+AppTerm :
+    ATerm
+      { $1 }
+  | SUCC ATerm
+      { TmSucc($1, $2) }
+  | PRED ATerm
+      { TmPred($1, $2) }
+  | ISZERO ATerm
+      { TmIsZero($1, $2) }
+
+/* Atomic terms are ones that never require extra parentheses */
+ATerm :
+    LPAREN Term RPAREN  
+      { $2 } 
+  | TRUE
+      { TmTrue($1) }
+  | FALSE
+      { TmFalse($1) }
+  | INTV
+      { let rec f n = match n with
+              0 -> TmZero($1.i)
+            | n -> TmSucc($1.i, f (n-1))
+          in f $1.v }
   | ID
       { TmValue($1.i, $1.v) }
 
