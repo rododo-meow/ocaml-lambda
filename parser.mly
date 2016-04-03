@@ -76,9 +76,7 @@ Command :
       { (let t = $1 in Eval(tmInfo (Exp t),t)) }
 
 Term :
-    Term Exp
-      { TmApply(tmInfo (Exp $2), $1, $2) }
-  | LAMBDA ID COLON Type DOT Term
+  | LAMBDA ID COLON Type DOT Exp
       { TmLambda($1, $2.v, $4, $6) }
   | LAMBDA ID DOT Term
       { TmLambda($1, $2.v, TmNone, $4) }
@@ -88,7 +86,7 @@ Term :
 Exp :
     AppTerm
       { $1 }
-  | IF Term THEN Term ELSE Term
+  | IF AppTerm THEN AppTerm ELSE AppTerm
       { TmIf($1, $2, $4, $6) }
 
 AppTerm :
@@ -100,6 +98,8 @@ AppTerm :
       { TmPred($1, $2) }
   | ISZERO ATerm
       { TmIsZero($1, $2) }
+  | AppTerm ATerm
+      { TmApply(tmInfo (Exp $1), $1, $2) }
 
 /* Atomic terms are ones that never require extra parentheses */
 ATerm :

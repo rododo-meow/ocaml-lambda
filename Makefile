@@ -43,7 +43,7 @@ f.exe: $(OBJS) main.cmo
 
 # Build and test
 test: all
-	./f test.f
+	./f test.lambda
 
 # Compile an ML module interface
 %.cmi : %.mli

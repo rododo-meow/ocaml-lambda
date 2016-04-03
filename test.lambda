@@ -9,3 +9,5 @@ if true then 0 else succ true;
 if true then 0 else pred (\a:Nat.a);
 if true then 0 else iszero true;
 b;
+(\a.\b.a b) (\a.succ a) 0
+(\c.(\a.(\b.b (\a.b c)) (\b.b a)) (succ 3)) (\a.if iszero(pred (pred (pred a))) then 1 else 0);
