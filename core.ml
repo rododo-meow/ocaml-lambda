@@ -2,13 +2,12 @@ open Format
 open Syntax
 open Support.Error
 open Support.Pervasive
+open Type
 
 (* ------------------------   EVALUATION  ------------------------ *)
 
 exception NoRuleApplies
 exception IllFormed
-
-type ty = TyBool | TyNat | TyArrow of ty * ty
 
 module StringMap = Map.Make(String)
 module Int = struct
@@ -16,17 +15,6 @@ module Int = struct
   let compare i j = Pervasives.compare i j
 end
 module IntMap = Map.Make(Int)
-
-let rec print_type ty = match ty with
-    TyBool -> pr "Bool"
-  | TyNat -> pr "Nat"
-  | TyArrow(ty1,ty2) -> 
-      (match ty1 with
-          TyArrow _ ->
-            pr "("; print_type ty1; pr ")"
-        | _ -> print_type ty1);
-      pr "->";
-      print_type ty2
 
 let rec type_term_to_type t = match t with
     TmBool(_) -> TyBool

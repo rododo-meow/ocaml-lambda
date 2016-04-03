@@ -1,6 +1,7 @@
 open Format
 open Support.Error
 open Support.Pervasive
+open Type
 
 (* ---------------------------------------------------------------------- *)
 (* Datatypes *)
@@ -9,6 +10,8 @@ type type_term =
     TmBool of info
   | TmNat of info
   | TmArrow of info * type_term * type_term
+  | TmNone
+  | TmInfered of ty ref
 
 type exp_term =
     TmTrue of info
@@ -82,6 +85,9 @@ let rec printtm_TypeTerm outer t = match t with
         | _ -> printtm_TypeTerm false ty1);
       pr "->";
       printtm_TypeTerm false ty2
+  | TmNone -> ()
+  | TmInfered(pTy) ->
+      print_type !pTy
 
 and printtm_ExpTerm outer t = match t with
     TmApply(fi, t1, t2) ->

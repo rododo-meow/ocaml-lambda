@@ -15,7 +15,7 @@
 
 # These are the object files needed to rebuild the main executable file
 #
-OBJS = support.cmo syntax.cmo core.cmo parser.cmo lexer.cmo main.cmo
+OBJS = support.cmo type.cmo syntax.cmo core.cmo parser.cmo lexer.cmo main.cmo
 
 # Files that need to be generated from other files
 DEPEND += lexer.ml parser.ml 

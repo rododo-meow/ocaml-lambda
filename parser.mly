@@ -80,6 +80,8 @@ Term :
       { TmApply(tmInfo (Exp $2), $1, $2) }
   | LAMBDA ID COLON Type DOT Term
       { TmLambda($1, $2.v, $4, $6) }
+  | LAMBDA ID DOT Term
+      { TmLambda($1, $2.v, TmNone, $4) }
   | Exp
       { $1 }
 

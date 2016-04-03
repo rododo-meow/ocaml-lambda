@@ -2,12 +2,15 @@
 
 open Support.Pervasive
 open Support.Error
+open Type
 
 (* Data type definitions *)
 type type_term =
     TmBool of info
   | TmNat of info
   | TmArrow of info * type_term * type_term
+  | TmNone
+  | TmInfered of ty ref
 
 type exp_term =
     TmTrue of info
