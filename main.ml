@@ -52,8 +52,12 @@ let alreadyImported = ref ([] : string list)
 
 let rec process_command  cmd = match cmd with
   | Eval(fi,t) -> 
+      open_hvbox 2;
+      printtm t;
+      force_newline();
       let t' = eval t in
       printtm t'; 
+      close_box();
       force_newline();
       ()
   

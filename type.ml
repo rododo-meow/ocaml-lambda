@@ -1,6 +1,6 @@
 open Support.Pervasive
 
-type ty = TyBool | TyNat | TyArrow of ty * ty | TyAny of string | TyInfer of ty ref
+type ty = TyBool | TyNat | TyArrow of ty * ty | TyAny of string
 
 let rec print_type ty = match ty with
     TyBool -> pr "Bool"
@@ -13,5 +13,6 @@ let rec print_type ty = match ty with
       pr "->";
       print_type ty2
   | TyAny(name) -> pr "'"; pr name
-  | TyInfer(ty) -> print_type !ty
 
+let gen_any_type () =
+  TyAny("a")

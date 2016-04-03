@@ -20,6 +20,7 @@ let rec type_term_to_type t = match t with
     TmBool(_) -> TyBool
   | TmNat(_) -> TyNat
   | TmArrow(_,ty1,ty2) -> TyArrow(type_term_to_type ty1, type_term_to_type ty2)
+  | TmNone(ppTy) -> !(!ppTy)
 
 let rec get_type context t = match t with
     TmIf(_,t1,t2,t3) ->
@@ -30,13 +31,13 @@ let rec get_type context t = match t with
             in 
             if ty1 = ty2 then ty1 else
               (printInfo (tmInfo (Exp t));
-               pr "Type of two branches of if doesn't match\n";
-               pr "True:  "; print_type ty1; pr "\n";
-               pr "False: "; print_type ty2; pr "\n";
+               pr "Type of two branches of if doesn't match"; force_newline();
+               pr "True:  "; print_type ty1; force_newline();
+               pr "False: "; print_type ty2; force_newline();
                raise IllFormed)
         | ty ->
           (printInfo (tmInfo (Exp t));
-           pr "The condition exp's type is "; print_type ty; pr "\n";
+           pr "The condition exp's type is "; print_type ty; force_newline();
            raise IllFormed))
   | TmZero(_) -> TyNat
   | TmSucc(_,t) -> 
@@ -44,21 +45,21 @@ let rec get_type context t = match t with
        TyNat -> TyNat
      | ty ->
        (printInfo (tmInfo (Exp t));
-        pr "Apply succ on "; print_type ty; pr "\n";
+        pr "Apply succ on "; print_type ty; force_newline();
         raise IllFormed))
   | TmPred(_,t) ->
     (match get_type context t with
        TyNat -> TyNat
      | ty ->
        (printInfo (tmInfo (Exp t));
-        pr "Apply pred on "; print_type ty; pr "\n";
+        pr "Apply pred on "; print_type ty; force_newline();
         raise IllFormed))
   | TmIsZero(_,t') ->
     (match get_type context t' with
        TyNat -> TyBool
      | ty ->
        (printInfo (tmInfo (Exp t));
-        pr "Apply iszero on "; print_type ty; pr "\n";
+        pr "Apply iszero on "; print_type ty; force_newline();
         raise IllFormed))
   | TmTrue(_) -> TyBool
   | TmFalse(_) -> TyBool
@@ -68,7 +69,7 @@ let rec get_type context t = match t with
      with
        Not_found ->
        (printInfo (tmInfo (Exp t));
-        pr "Free variable"; pr "\n";
+        pr "Free variable"; force_newline();
         raise IllFormed))
   | TmApply(_,t1,t2) ->
     (let ty1 = get_type context t1
@@ -77,11 +78,11 @@ let rec get_type context t = match t with
        match ty1 with
            TyArrow(tys,tyd) -> if tys = ty2 then tyd else
              (printInfo (tmInfo (Exp t));
-              pr "Abstraction's type doesn't match with actual argument (need "; print_type tys; pr ", got "; print_type ty2; pr ")"; pr "\n";
+              pr "Abstraction's type doesn't match with actual argument (need "; print_type tys; pr ", got "; print_type ty2; pr ")"; force_newline();
               raise IllFormed)
          | _ ->
            (printInfo (tmInfo (Exp t));
-            pr "Do apply on "; print_type ty1; pr "\n";
+            pr "Do apply on "; print_type ty1; force_newline();
             raise IllFormed))
   | TmLambda(_,name,ty,t2) ->
     (let ty1 = type_term_to_type ty
@@ -239,15 +240,15 @@ let rec print_list l = match l with
   | x::xl -> print_string x; print_list xl
 
 let print_map m =
-  StringMap.iter (fun s n -> print_string s; print_string ":"; print_int n; print_string "\n") m
+  StringMap.iter (fun s n -> print_string s; print_string ":"; print_int n; force_newline()) m
 
 let rec nameless_eval t =
-  try let t' = eval1 t
-    in
-      printtm t';
-      pr "\n";
-      nameless_eval t'
-  with NoRuleApplies -> t
+  (try let t' = eval1 t
+     in
+       printtm t';
+       force_newline();
+       nameless_eval t'
+   with NoRuleApplies -> t)
 
 let eval t =
   let context = get_context (get_free_var t)
@@ -256,6 +257,6 @@ let eval t =
   in
     try
       drop (get_type IntMap.empty nameless_rep);
-      nameful context (nameless_eval nameless_rep)
+      nameful context (nameless_eval nameless_rep);
     with
       IllFormed -> IllExp

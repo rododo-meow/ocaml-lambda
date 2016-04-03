@@ -10,8 +10,7 @@ type type_term =
     TmBool of info
   | TmNat of info
   | TmArrow of info * type_term * type_term
-  | TmNone
-  | TmInfered of ty ref
+  | TmNone of ty ref ref
 
 type exp_term =
     TmTrue of info
@@ -51,6 +50,7 @@ let tmInfo t = match t with
   | Type(TmNat(fi)) -> fi
   | Type(TmArrow(fi,_,_)) -> fi
   | Exp(IllExp) -> dummyinfo
+  | Type(TmNone _) -> dummyinfo
 
 (* ---------------------------------------------------------------------- *)
 (* Printing *)
@@ -85,9 +85,7 @@ let rec printtm_TypeTerm outer t = match t with
         | _ -> printtm_TypeTerm false ty1);
       pr "->";
       printtm_TypeTerm false ty2
-  | TmNone -> ()
-  | TmInfered(pTy) ->
-      print_type !pTy
+  | TmNone(ppTy) -> print_type !(!ppTy)
 
 and printtm_ExpTerm outer t = match t with
     TmApply(fi, t1, t2) ->
