@@ -67,8 +67,7 @@ toplevel :
     EOF
       { [] }
   | Command SEMI toplevel
-      { clear_any_type();
-        let cmd = $1 in
+      { let cmd = $1 in
           let cmds = $3 in
           cmd::cmds }
 
@@ -81,7 +80,7 @@ Term :
   | LAMBDA ID COLON Type DOT Exp
       { TmLambda($1, $2.v, $4, $6) }
   | LAMBDA ID DOT Term
-      { TmLambda($1, $2.v, TmNone(gen_any_type()), $4) }
+      { TmLambda($1, $2.v, TmNone("_"), $4) }
   | Exp
       { $1 }
 

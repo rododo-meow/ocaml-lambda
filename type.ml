@@ -18,10 +18,8 @@ let candidate_name = [ "a"; "b"; "c"; "d"; "e"; "f"; "g"; "h"; "i"; "j"; "k"; "l
 
 let available = ref candidate_name
 
-let gen_any_type () =
-  let name = List.hd !available in
-  available := List.tl !available;
-  name
-
-let clear_any_type () =
-  available := candidate_name
+module StringMap = Map.Make(String)
+let gen_any_type pinfer =
+  let name = List.find (fun name -> not (StringMap.mem name !pinfer)) candidate_name in
+  (pinfer := StringMap.add name (TyAny(name)) !pinfer;
+   name)
