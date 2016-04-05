@@ -9,7 +9,7 @@ type type_term =
     TmBool of info
   | TmNat of info
   | TmArrow of info * type_term * type_term
-  | TmNone of ty ref ref
+  | TmNone of string
 
 type exp_term =
     TmTrue of info

@@ -16,18 +16,37 @@ module Int = struct
 end
 module IntMap = Map.Make(Int)
 
-let rec type_term_to_type t = match t with
+let is_any ty = match ty with
+    TyAny _ -> true
+  | _ -> false
+
+let rec type_term_to_type pinfer t =
+  let rec traversal ty = match ty with
+      TyArrow(ty1,ty2) -> TyArrow(traversal ty1, traversal ty2)
+    | _ -> ty 
+  in match t with
     TmBool(_) -> TyBool
   | TmNat(_) -> TyNat
-  | TmArrow(_,ty1,ty2) -> TyArrow(type_term_to_type ty1, type_term_to_type ty2)
-  | TmNone(ppTy) -> !(!ppTy)
+  | TmArrow(_,ty1,ty2) -> TyArrow(type_term_to_type pinfer ty1, type_term_to_type pinfer ty2)
+  | TmNone(name) ->
+    (try
+       traversal (StringMap.find name !pinfer)
+     with
+       Not_found -> TyAny(name))
 
-let rec get_type context t = match t with
+let rec get_type context pinfer t =
+  let infer name ty =
+    (pr "Map '"; pr name; pr " to "; print_type ty; force_newline();
+     pinfer := StringMap.add name ty !pinfer)
+  and get_name ty = match ty with
+      TyAny(name) -> name
+    | _ -> raise (Exit 1)
+  in match t with
     TmIf(_,t1,t2,t3) ->
-      (match get_type context t1 with
+      (match get_type context pinfer t1 with
           TyBool ->
-            let ty1 = get_type context t2
-            and ty2 = get_type context t3
+            let ty1 = get_type context pinfer t2
+            and ty2 = get_type context pinfer t3
             in 
             if ty1 = ty2 then ty1 else
               (printInfo (tmInfo (Exp t));
@@ -35,28 +54,40 @@ let rec get_type context t = match t with
                pr "True:  "; print_type ty1; force_newline();
                pr "False: "; print_type ty2; force_newline();
                raise IllFormed)
+        | TyAny(name) ->
+           (pinfer := StringMap.add name TyBool !pinfer;
+            get_type context pinfer t)
         | ty ->
           (printInfo (tmInfo (Exp t));
            pr "The condition exp's type is "; print_type ty; force_newline();
            raise IllFormed))
   | TmZero(_) -> TyNat
   | TmSucc(_,t) -> 
-    (match get_type context t with
+    (match get_type context pinfer t with
        TyNat -> TyNat
+     | TyAny(name) ->
+       (infer name TyNat;
+        TyNat)
      | ty ->
        (printInfo (tmInfo (Exp t));
         pr "Apply succ on "; print_type ty; force_newline();
         raise IllFormed))
   | TmPred(_,t) ->
-    (match get_type context t with
+    (match get_type context pinfer t with
        TyNat -> TyNat
+     | TyAny(name) ->
+       (infer name TyNat;
+        TyNat)
      | ty ->
        (printInfo (tmInfo (Exp t));
         pr "Apply pred on "; print_type ty; force_newline();
         raise IllFormed))
   | TmIsZero(_,t') ->
-    (match get_type context t' with
+    (match get_type context pinfer t' with
        TyNat -> TyBool
+     | TyAny(name) ->
+       (infer name TyNat;
+        TyBool)
      | ty ->
        (printInfo (tmInfo (Exp t));
         pr "Apply iszero on "; print_type ty; force_newline();
@@ -72,21 +103,28 @@ let rec get_type context t = match t with
         pr "Free variable"; force_newline();
         raise IllFormed))
   | TmApply(_,t1,t2) ->
-    (let ty1 = get_type context t1
-     and ty2 = get_type context t2
+    (let ty1 = get_type context pinfer t1
+     and ty2 = get_type context pinfer t2
      in
-       match ty1 with
-           TyArrow(tys,tyd) -> if tys = ty2 then tyd else
-             (printInfo (tmInfo (Exp t));
-              pr "Abstraction's type doesn't match with actual argument (need "; print_type tys; pr ", got "; print_type ty2; pr ")"; force_newline();
-              raise IllFormed)
-         | _ ->
-           (printInfo (tmInfo (Exp t));
-            pr "Do apply on "; print_type ty1; force_newline();
-            raise IllFormed))
+       (if is_any ty1 then
+          (infer (get_name ty1) (TyArrow(TyAny(gen_any_type()), ty2));
+           get_type context pinfer t)
+        else match ty1 with
+            TyArrow(tys,tyd) ->
+            if is_any tys then
+              (infer (get_name tys) ty2;
+               get_type context pinfer t)
+            else if tys = ty2 then tyd else
+              (printInfo (tmInfo (Exp t));
+               pr "Abstraction's type doesn't match with actual argument (need "; print_type tys; pr ", got "; print_type ty2; pr ")"; force_newline();
+               raise IllFormed)
+          | _ ->
+            (printInfo (tmInfo (Exp t));
+             pr "Do apply on "; print_type ty1; force_newline();
+             raise IllFormed)))
   | TmLambda(_,name,ty,t2) ->
-    (let ty1 = type_term_to_type ty
-     in let ty2 = get_type (IntMap.add 0 ty1 (IntMap.fold (fun key ty m -> IntMap.add (key+1) ty m) context IntMap.empty)) t2
+    (let ty1 = type_term_to_type pinfer ty
+     in let ty2 = get_type (IntMap.add 0 ty1 (IntMap.fold (fun key ty m -> IntMap.add (key+1) ty m) context IntMap.empty)) pinfer t2
      in TyArrow(ty1, ty2))
   | IllExp -> raise IllFormed
 
@@ -256,7 +294,7 @@ let eval t =
   and drop v = ()
   in
     try
-      drop (get_type IntMap.empty nameless_rep);
-      nameful context (nameless_eval nameless_rep);
+      drop (get_type IntMap.empty (ref StringMap.empty) nameless_rep);
+      nameful context (nameless_eval nameless_rep)
     with
       IllFormed -> IllExp

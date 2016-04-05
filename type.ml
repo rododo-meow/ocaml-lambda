@@ -14,5 +14,14 @@ let rec print_type ty = match ty with
       print_type ty2
   | TyAny(name) -> pr "'"; pr name
 
+let candidate_name = [ "a"; "b"; "c"; "d"; "e"; "f"; "g"; "h"; "i"; "j"; "k"; "l"; "m"; "n"; "o" ]
+
+let available = ref candidate_name
+
 let gen_any_type () =
-  TyAny("a")
+  let name = List.hd !available in
+  available := List.tl !available;
+  name
+
+let clear_any_type () =
+  available := candidate_name

@@ -10,7 +10,7 @@ type type_term =
     TmBool of info
   | TmNat of info
   | TmArrow of info * type_term * type_term
-  | TmNone of ty ref ref
+  | TmNone of string
 
 type exp_term =
     TmTrue of info
@@ -85,7 +85,7 @@ let rec printtm_TypeTerm outer t = match t with
         | _ -> printtm_TypeTerm false ty1);
       pr "->";
       printtm_TypeTerm false ty2
-  | TmNone(ppTy) -> print_type !(!ppTy)
+  | TmNone(name) -> pr "'"; pr name
 
 and printtm_ExpTerm outer t = match t with
     TmApply(fi, t1, t2) ->
